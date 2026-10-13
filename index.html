@@ -41,7 +41,7 @@
 	<body>
 		<div class="container">
 		<h1>CS184/284A Fall 2026 Homework 2 Write-Up</h1>
-		<div style="text-align: center;">Names: </div>
+		<div style="text-align: center;">Names: Junehee Lee, Jeslyn Nguyen </div>
 
 		<br>
 
@@ -75,7 +75,7 @@
 		We implemented one step of this in <code>BezierCurve::evaluateStep</code>. It loops over each pair of neighboring points, computes the lerp using the class member <code>t</code>, and <code>push_back</code>s the result into a new vector, so the output has one fewer point than the input. The GUI calls this once per press of E, so each press shows the next level.
 		</p>
 		<p>
-		We made our own curve with 6 control points (<code>bzc/my_curve.bzc</code>). Below are all the levels: the 6 original points (white), then the intermediate points at 5, 4, 3 and 2 points (blue), and finally the single evaluated point (red). The last image also has the full curve turned on with C (green).
+		We made our own curve with 6 control points (<code>bzc/curve3.bzc</code>). Below are all the levels: the 6 original points (white), then the intermediate points at 5, 4, 3 and 2 points (blue), and finally the single evaluated point (red). The last image also has the full curve turned on with C (green).
 		</p>
 		<div style="display: flex; flex-direction: column; align-items: center;">
 			<table style="width: 100%; text-align: center; border-collapse: collapse;">
@@ -98,7 +98,7 @@
 			</table>
 		</div>
 		<p>
-		In the last image we dragged one of the control points down to the bottom and scrolled to increase \(t\). The whole curve bends toward the moved point, but it still starts and ends at the first and last control points. The red point also slides further along the curve because \(t\) is bigger.
+		In the last image we dragged one of the control points down to the upper left and scrolled to decrease \(t\). The green curve changes shape to follow the moved points, but it still starts and ends at the first and last control points. The red point is now close to the start of the curve since t is small, and all the blue intermediate points shifted with it."
 		</p>
 
 		<h3>Part 2: Bezier surfaces with separable 1D de Casteljau</h3>
