@@ -18,6 +18,19 @@
 
 			img {
 				display: inline-block;
+				border-radius: 4px;
+				transition: transform 0.25s ease, box-shadow 0.25s ease;
+			}
+
+			img:hover {
+				transform: scale(1.04);
+				box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+				position: relative;
+				z-index: 1;
+			}
+
+			td {
+				padding: 6px;
 			}
 
 			body {
@@ -32,85 +45,211 @@
 
 		<br>
 
-		Link to webpage: (TODO) <a href="https://cs184.eecs.berkeley.edu/fa26">cs184.eecs.berkeley.edu/fa26</a>
+		Link to webpage: <a href="https://github.com/cal-cs184-student/hw2-hff-writeup">github.com/cal-cs184-student/hw2-hff-writeup</a>
 
 		<br>
 		
-		Link to GitHub repository: (TODO) <a href="https://cs184.eecs.berkeley.edu/fa26">cs184.eecs.berkeley.edu/fa26</a>
-
-		<figure>
-			<img src="assets/teapot.png" alt="Teapot" style="width:50%"/>
-			<figcaption>You can add images with captions!</figcaption>
-		</figure>
+		Link to GitHub repository: <a href="https://github.com/cal-cs184-student/hw2-hff">github.com/cal-cs184-student/hw2-hff</a>
 
 		<!--
 		We've already added one heading per part, to make your write-up as navigable when grading. Please fit your write-up within these sections!
 		-->
 
 		<h2>Overview</h2>
-		Give a high-level overview of what you implemented in this homework. Think about what you've built as a whole. Share your thoughts on what interesting things you've learned from completing the homework.
+		<p>
+		In this homework we built a small geometry editor. In Section I we used de Casteljau's algorithm to evaluate Bezier curves and Bezier surfaces from their control points. In Section II we worked on triangle meshes stored as a half-edge data structure: we computed area-weighted vertex normals for smooth shading, implemented local edge flips and edge splits, and then combined splits and flips into Loop subdivision to upsample meshes.
+		</p>
+		<p>
+		The most interesting part for us was how much you can build out of very simple steps (and how pretty the 3d figures looked). A Bezier curve or surface is just repeated lerps, and Loop subdivision is just "split every edge, flip some of the new ones, move the vertices." The hard part was the half-edge bookkeeping. One wrong pointer in a flip or split doesn't always crash right away, it just breaks the mesh later, so we had to be careful to reassign every pointer, even the ones that don't change.
+		</p>
 
 		<h2>Section I: Bezier Curves and Surfaces</h2>
 
 		<h3>Part 1: Bezier curves with 1D de Casteljau subdivision</h3>
-		Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
-
-		<p>Here is an example 2x2 gridlike structure using an HTML table. Each <b>tr</b> is a row and each <b>td</b> is a column in that row. You might find this useful for framing and showing your result images in an organized fashion.</p>
+		<p>
+		De Casteljau's algorithm evaluates a Bezier curve at a parameter \(t\) by repeatedly linearly interpolating. Given \(n\) control points, you lerp each pair of neighbors to get \(n-1\) new points,
+		\[p_i' = (1 - t)\,p_i + t\,p_{i+1},\]
+		and repeat on those points until only one point is left. That last point is the point on the curve at \(t\).
+		</p>
+		<p>
+		We implemented one step of this in <code>BezierCurve::evaluateStep</code>. It loops over each pair of neighboring points, computes the lerp using the class member <code>t</code>, and <code>push_back</code>s the result into a new vector, so the output has one fewer point than the input. The GUI calls this once per press of E, so each press shows the next level.
+		</p>
+		<p>
+		We made our own curve with 6 control points (<code>bzc/my_curve.bzc</code>). Below are all the levels: the 6 original points (white), then the intermediate points at 5, 4, 3 and 2 points (blue), and finally the single evaluated point (red). The last image also has the full curve turned on with C (green).
+		</p>
 		<div style="display: flex; flex-direction: column; align-items: center;">
 			<table style="width: 100%; text-align: center; border-collapse: collapse;">
-			  <tr>
-				<td style="text-align: center;">
-				  <img src="assets/teapot.png" width="400px"/>
-				  <figcaption>Caption goes here.</figcaption>
-				</td>
-				<td style="text-align: center;">
-				  <img src="assets/teapot.png" width="400px"/>
-				  <figcaption>Caption goes here.</figcaption>
-				</td>
-			  </tr>
-			  <tr>
-				<td style="text-align: center;">
-				  <img src="assets/teapot.png" width="400px"/>
-				  <figcaption>Caption goes here.</figcaption>
-				</td>
-				<td style="text-align: center;">
-				  <img src="assets/teapot.png" width="400px"/>
-				  <figcaption>Caption goes here.</figcaption>
-				</td>
-			  </tr>
+				<tr>
+					<td><img src="assets/p1_level0.png" width="400px"/><figcaption>Level 0: original 6 control points</figcaption></td>
+					<td><img src="assets/p1_level1.png" width="400px"/><figcaption>Level 1: 5 points</figcaption></td>
+				</tr>
+				<tr>
+					<td><img src="assets/p1_level2.png" width="400px"/><figcaption>Level 2: 4 points</figcaption></td>
+					<td><img src="assets/p1_level3.png" width="400px"/><figcaption>Level 3: 3 points</figcaption></td>
+				</tr>
+				<tr>
+					<td><img src="assets/p1_level4.png" width="400px"/><figcaption>Level 4: 2 points</figcaption></td>
+					<td><img src="assets/p1_level5.png" width="400px"/><figcaption>Level 5: final evaluated point (red)</figcaption></td>
+				</tr>
+				<tr>
+					<td><img src="assets/p1_curve.png" width="400px"/><figcaption>All levels with the full Bezier curve (C)</figcaption></td>
+					<td><img src="assets/p1_moved.png" width="400px"/><figcaption>Moved a control point and scrolled to change \(t\)</figcaption></td>
+				</tr>
 			</table>
 		</div>
+		<p>
+		In the last image we dragged one of the control points down to the bottom and scrolled to increase \(t\). The whole curve bends toward the moved point, but it still starts and ends at the first and last control points. The red point also slides further along the curve because \(t\) is bigger.
+		</p>
 
 		<h3>Part 2: Bezier surfaces with separable 1D de Casteljau</h3>
-		Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+		<p>
+		A Bezier surface is defined by a grid of control points and two parameters \(u\) and \(v\). The algorithm is separable: you treat each row of the grid as its own Bezier curve and evaluate it at \(u\) with 1D de Casteljau, which gives one point per row. Those points form a new Bezier curve going roughly along a column, and evaluating that curve at \(v\) gives the final point on the surface.
+		</p>
+		<p>
+		We implemented this with three functions:
+		</p>
+		<ul>
+			<li><code>BezierPatch::evaluateStep</code>: same as Part 1 but for 3D points, with \(t\) passed in as an argument.</li>
+			<li><code>BezierPatch::evaluate1D</code>: keeps calling <code>evaluateStep</code> until one point is left and returns it.</li>
+			<li><code>BezierPatch::evaluate</code>: calls <code>evaluate1D</code> on each row of <code>controlPoints</code> with \(u\), then calls <code>evaluate1D</code> once more on those row results with \(v\).</li>
+		</ul>
+		<figure>
+			<img src="assets/p2_teapot_bez.png" alt="teapot.bez" width="500px"/>
+			<figcaption><code>bez/teapot.bez</code> evaluated with our Bezier surface code</figcaption>
+		</figure>
 
 		<h2>Section II: Triangle Meshes and Half-Edge Data Structure</h2>
 
 		<h3>Part 3: Area-weighted vertex normals</h3>
-		Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+		<p>
+		To get a normal for a vertex, we average the normals of all the triangles around it, weighted by each triangle's area, so big faces count more than tiny ones. In <code>Vertex::normal</code> we start at the vertex's halfedge and walk around it with <code>h = h->twin()->next()</code> until we get back to where we started. For each face that isn't a boundary face, we take the vertex position \(p_0\) and the other two corners \(p_1\), \(p_2\) and add \((p_1 - p_0) \times (p_2 - p_0)\) to a running sum. The length of a cross product is twice the triangle's area, so adding the raw cross products already weights each face by area, and we don't need to compute areas separately. At the end we return the sum normalized with <code>.unit()</code>.
+		</p>
+		<p>
+		Pressing Q switches from flat shading (one normal per face) to Phong shading using our vertex normals. With flat shading you can see every face as its own flat patch. With our normals the lighting blends smoothly across the faces and the teapot looks round.
+		</p>
+		<div style="display: flex; flex-direction: column; align-items: center;">
+			<table style="width: 100%; text-align: center; border-collapse: collapse;">
+				<tr>
+					<td><img src="assets/p3_flat.png" width="400px"/><figcaption>Flat shading (default)</figcaption></td>
+					<td><img src="assets/p3_phong.png" width="400px"/><figcaption>Phong shading with our vertex normals (Q)</figcaption></td>
+				</tr>
+				<tr>
+					<td><img src="assets/p3_flat_nowire.png" width="400px"/><figcaption>Flat shading, wireframe off (W)</figcaption></td>
+					<td><img src="assets/p3_phong_nowire.png" width="400px"/><figcaption>Phong shading, wireframe off</figcaption></td>
+				</tr>
+			</table>
+		</div>
 
 		<h3>Part 4: Edge flip</h3>
-		Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+		<p>
+		An edge flip takes the two triangles that share an edge, (b, c, a) and (c, b, d), and swaps the shared edge b-c for the other diagonal a-d, so you end up with (a, d, c) and (d, a, b). Nothing is created or deleted, only pointers change. If the edge is on the boundary, <code>flipEdge</code> just returns it without doing anything.
+		</p>
+		<p>
+		Following the spec, we sketched the two triangles before and after the flip and labeled everything: the 6 halfedges inside the two triangles (h0 to h5), the 4 outside twins (h6 to h9), the 4 vertices, the 5 edges and the 2 faces. We save all of them into local variables before changing anything, then call <code>setNeighbors</code> on all 6 inner halfedges with their new next, twin, vertex, edge and face. After that we fix the outer twins and reset the <code>halfedge()</code> pointer of every vertex, edge and face involved, since some of them used to point at a halfedge that doesn't belong to them anymore. Setting every pointer, even the ones that didn't change, made it much easier to check our work against the drawing.
+		</p>
+		<div style="display: flex; flex-direction: column; align-items: center;">
+			<table style="width: 100%; text-align: center; border-collapse: collapse;">
+				<tr>
+					<td><img src="assets/p4_before.png" width="400px"/><figcaption>Teapot before any flips</figcaption></td>
+					<td><img src="assets/p4_after.png" width="400px"/><figcaption>After flipping a couple of edges (F)</figcaption></td>
+				</tr>
+			</table>
+		</div>
+		<p>
+		In the after picture, the flipped diagonals on the front of the teapot now go the other way (you can see the diamond shapes), and the rest of the mesh is unchanged.
+		</p>
+		<p>
+		<b>Debugging:</b> the main thing we had to be careful about was resetting the <code>halfedge()</code> pointers of the vertices, edges and faces, since after the flip some of them would otherwise point at a halfedge that no longer starts at that vertex or belongs to that face. To check our work, we also wrote a small test that flips some edges and then checks that <code>h->twin()->twin() == h</code>, that each face's loop of halfedges comes back to the start after 3 steps, and that <code>h->next()->vertex() == h->twin()->vertex()</code>. At first the test seemed to fail too, but that turned out to be our test's fault: it kept flipping every edge around a single vertex until that vertex only had 2 neighbors, which isn't a valid shape. When we only flipped normal interior edges, every check passed.
+		</p>
 
 		<h3>Part 5: Edge split</h3>
-		Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+		<p>
+		An edge split takes the shared edge b-c of the triangles (b, c, a) and (c, b, d) and puts a new vertex m at its midpoint, connected to all four vertices, so 2 triangles turn into 4. Unlike a flip, a split creates new stuff: 1 vertex, 3 edges (m-c, m-a, m-d, while the old edge becomes b-m), 6 halfedges and 2 faces. We used the same approach as Part 4: label every element before and after on a drawing, save all the old halfedges, vertices and faces into variables, create the new elements, then call <code>setNeighbors</code> on all 12 halfedges in the 4 new triangles. After that we reset the <code>halfedge()</code> pointers of every vertex, edge and face involved. The new vertex's halfedge points along the original edge, like the comment in the starter code asks, and we set <code>isNew</code> on the new vertex and the 2 new crossing edges because Part 6 needs that.
+		</p>
+		<div style="display: flex; flex-direction: column; align-items: center;">
+			<table style="width: 100%; text-align: center; border-collapse: collapse;">
+				<tr>
+					<td><img src="assets/p5_before.png" width="400px"/><figcaption>Before any splits</figcaption></td>
+					<td><img src="assets/p5_split.png" width="400px"/><figcaption>After splitting several diagonal edges (S)</figcaption></td>
+				</tr>
+				<tr>
+					<td colspan="2"><img src="assets/p5_splitflip.png" width="400px"/><figcaption>Splits followed by some flips (S + F)</figcaption></td>
+				</tr>
+			</table>
+		</div>
+		<p>
+		Each split diagonal turns into an X with the new vertex in the middle. In the last picture we flipped some of the edges around the split cells after splitting them, which changes how the new midpoints connect to their neighbors. The mesh stays connected with no holes or flipped faces after mixing splits and flips.
+		</p>
+		<p>
+		<b>Debugging:</b> since the split has twice as many pointers as the flip, it was easy to give a halfedge the wrong face or forget to update a face's <code>halfedge()</code>, so we went back and forth between the code and the drawing a lot. Setting every pointer for every element, even when it didn't change, made it easier to check. We also ran the same validity test from Part 4 (twin of twin, face loops of length 3, next vertex = twin vertex) after a bunch of splits, and it passed. We did not implement boundary edge splits; <code>splitEdge</code> just returns without changing anything on a boundary edge.
+		</p>
 
 		<h3>Part 6: Loop subdivision for mesh upsampling</h3>
-		Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+		<p>
+		Loop subdivision splits every triangle into 4 smaller ones and then moves the vertices to smooth out the mesh. We did it in <code>MeshResampler::upsample</code> in the 5 steps from the comments:
+		</p>
+		<ol>
+			<li><b>Old vertices:</b> for each original vertex we compute its new position \((1 - n u) \cdot \text{original} + u \cdot \text{neighbor sum}\), where \(n\) is the degree and \(u = 3/16\) if \(n = 3\), otherwise \(3/(8n)\). We store it in <code>newPosition</code> and mark the vertex as old (<code>isNew = false</code>).</li>
+			<li><b>New vertices:</b> for each edge AB with opposite vertices C and D, the new midpoint position is \(\frac{3}{8}(A + B) + \frac{1}{8}(C + D)\), stored in <code>Edge::newPosition</code>.</li>
+			<li><b>Split:</b> we split every original edge with our Part 5 <code>splitEdge</code> and copy the edge's <code>newPosition</code> into the new vertex. We only loop over the original edges by saving <code>nEdges()</code> first, since the new edges get added to the end of the list and otherwise the loop would never end.</li>
+			<li><b>Flip:</b> we flip every new edge that connects an old vertex and a new vertex, which turns the triangles into the standard 4-to-1 pattern.</li>
+			<li><b>Update:</b> copy <code>newPosition</code> into <code>position</code> for every vertex.</li>
+		</ol>
+		<p>
+		All the new positions are computed from the original mesh before anything gets split, so splitting and flipping never mess up the averaging.
+		</p>
+		<div style="display: flex; flex-direction: column; align-items: center;">
+			<table style="width: 100%; text-align: center; border-collapse: collapse;">
+				<tr>
+					<td><img src="assets/p6_cube0.png" width="300px"/><figcaption><code>dae/cube.dae</code> original</figcaption></td>
+					<td><img src="assets/p6_cube1.png" width="300px"/><figcaption>1 subdivision (L)</figcaption></td>
+					<td><img src="assets/p6_cube2.png" width="300px"/><figcaption>2 subdivisions</figcaption></td>
+				</tr>
+				<tr>
+					<td><img src="assets/p6_cube3.png" width="300px"/><figcaption>3 subdivisions</figcaption></td>
+					<td><img src="assets/p6_cube4.png" width="300px"/><figcaption>4 subdivisions</figcaption></td>
+					<td><img src="assets/p6_cube4_nowire.png" width="300px"/><figcaption>6 subdivisions, wireframe off, smooth shading (Q)</figcaption></td>
+				</tr>
+			</table>
+		</div>
+		<p>
+		<b>Sharp corners and edges:</b> Loop subdivision averages every vertex with its neighbors, so sharp corners and edges get rounded off. After a few iterations the cube looks like a blob instead of a cube. It also ends up lopsided: each face of <code>cube.dae</code> is only 2 triangles with one diagonal, so the corners on the diagonal have higher degree than the other two corners of the face. The corners get pulled by different amounts, and the result is stretched along the diagonals instead of being symmetric.
+		</p>
+		<p>
+		<b>Pre-splitting to fix the asymmetry:</b> before subdividing, we split the diagonal of all 6 faces, so each face becomes 4 triangles around a center vertex. Now every face looks the same and all 8 corners have the same degree, so the cube subdivides symmetrically into a rounded cube.
+		</p>
+		<div style="display: flex; flex-direction: column; align-items: center;">
+			<table style="width: 100%; text-align: center; border-collapse: collapse;">
+				<tr>
+					<td><img src="assets/p6_presplit0.png" width="300px"/><figcaption>Split the diagonal on all 6 faces</figcaption></td>
+					<td><img src="assets/p6_presplit1.png" width="300px"/><figcaption>1 subdivision</figcaption></td>
+					<td><img src="assets/p6_presplit2.png" width="300px"/><figcaption>2 subdivisions</figcaption></td>
+				</tr>
+				<tr>
+					<td><img src="assets/p6_presplit3.png" width="300px"/><figcaption>3 subdivisions</figcaption></td>
+					<td><img src="assets/p6_presplit4.png" width="300px"/><figcaption>4 subdivisions</figcaption></td>
+					<td><img src="assets/p6_presplit4_nowire.png" width="300px"/><figcaption>5 subdivisions, wireframe off, smooth shading (Q) (symmetric)</figcaption></td>
+				</tr>
+			</table>
+		</div>
+		<p>
+		<b>Pre-splitting to keep an edge sharper:</b> pre-splitting can also reduce the smoothing. The more vertices are packed close to an edge, the less each one gets averaged with faraway points, so that edge stays more defined. We tried this by splitting one vertical edge of the cube several times before subdividing. Through 4 subdivisions, that edge stays more defined than the rest of the cube, which rounds off like before. The downside is that splitting only along the edge made a fan of long, skinny triangles, and those turned into diagonal ridges after subdividing. You can see them clearly in the smooth-shaded shot at the end. To get a cleaner crease you would need to split more evenly around the edge, not just along it.
+		</p>
+		<div style="display: flex; flex-direction: column; align-items: center;">
+			<table style="width: 100%; text-align: center; border-collapse: collapse;">
+				<tr>
+					<td><img src="assets/p6_sharp0.png" width="300px"/><figcaption>Split one vertical edge several times</figcaption></td>
+					<td><img src="assets/p6_sharp1.png" width="300px"/><figcaption>1 subdivision</figcaption></td>
+					<td><img src="assets/p6_sharp2.png" width="300px"/><figcaption>2 subdivisions</figcaption></td>
+				</tr>
+				<tr>
+					<td><img src="assets/p6_sharp3.png" width="300px"/><figcaption>3 subdivisions</figcaption></td>
+					<td><img src="assets/p6_sharp4.png" width="300px"/><figcaption>4 subdivisions</figcaption></td>
+					<td><img src="assets/p6_sharp4_nowire.png" width="300px"/><figcaption>4 subdivisions, wireframe off, smooth shading (Q)</figcaption></td>
+				</tr>
+			</table>
+		</div>
 
-		<h2>(Optional) Section III: Potential Extra Credit - Art Competition: Model something Creative</h2>
-		Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
-
-		<h2>Additional Notes (please remove)</h2>
-		<ul>
-			<li>You can also add code if you'd like as so: <code>code code code</code></li>
-			<li>If you'd like to add math equations, 
-				<ul>
-					<li>You can write inline equations like so: \( a^2 + b^2 = c^2 \)</li>
-					<li>You can write display equations like so: \[ a^2 + b^2 = c^2 \]</li>
-				</ul>
-			</li>
-		</ul>
 		</div>
 	</body>
 </html>
